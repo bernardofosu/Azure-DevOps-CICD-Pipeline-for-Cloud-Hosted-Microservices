@@ -1,45 +1,112 @@
-# 🧪 Terraform One‑Command Dev + Prod (Learning Mode)
+# 🚀 AKS Terraform – Learning Mode (DEV + PROD Together)
 
-> ⚠️ **This approach is for LEARNING / LABS only**
-> ❌ **NOT recommended for real production systems**
+> 🧪 **Learning / Lab setup**
+> ❌ **Not for real production**
 
----
-
-## 🧠 Idea: Create DEV and PROD Together
-
-In this setup:
-
-👉 One Terraform folder
-👉 One `terraform apply` command
-👉 DEV and PROD are created **at the same time**
-
-This is useful when:
-
-- You are learning Terraform
-- You want to understand modules
-- You want quick results
+This canvas contains the **FULL WORKING CODE** for creating **DEV and PROD AKS clusters together with ONE `terraform apply`**.
 
 ---
 
-## 🧱 Project Structure (Simple – Learning)
+## 🧱 Project Structure
 
 ```
 aks-terraform-learning/
 │
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── provider.tf
-├── versions.tf
-└── terraform.tfvars
+├── main.tf              # Calls DEV & PROD together
+├── variables.tf        # Shared variables
+├── outputs.tf          # Shared outputs
+├── provider.tf         # Azure providers
+├── versions.tf         # Terraform & provider versions
+├── terraform.tfvars    # Actual values
+│
+└── modules/
+    └── aks/             # Reusable AKS blueprint (module)
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
 ```
 
 ---
 
-## 🧩 main.tf (DEV + PROD Together)
+## ⚙️ provider.tf
 
 ```hcl
-# DEV AKS
+provider "azurerm" {
+  features {}
+}
+
+provider "azuread" {}
+```
+
+---
+
+## 📌 versions.tf
+
+```hcl
+terraform {
+  required_version = ">= 1.4.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.4.0"
+    }
+  }
+}
+```
+
+---
+
+## 🧾 variables.tf (ROOT – Shared)
+
+```hcl
+variable "location" {
+  type = string
+}
+
+variable "kubernetes_version" {
+  type = string
+}
+
+# DEV sizing
+variable "dev_node_vm_size" { type = string }
+variable "dev_node_count"  { type = number }
+
+# PROD sizing
+variable "prod_node_vm_size" { type = string }
+variable "prod_node_count"  { type = number }
+
+# Service Principal
+variable "service_principal_app_id" { type = string }
+variable "service_principal_client_secret" {
+  type      = string
+  sensitive = true
+}
+```
+
+---
+
+## 🧾 terraform.tfvars
+
+```hcl
+location           = "West Europe"
+kubernetes_version = "1.32.9"
+
+# DEV
+dev_node_vm_size  = "Standard_D2s_v6"
+dev_node_count   = 2
+
+# PROD
+prod_node_vm_size = "Standard_D4s_v6"
+prod_node_count  = 3
+```
+
+---
+
+## 🧠 main.tf (DEV + PROD Together)
+
+```hcl
+# 🟢 DEV AKS
 module "aks_dev" {
   source = "./modules/aks"
 
@@ -56,7 +123,7 @@ module "aks_dev" {
   service_principal_client_secret = var.service_principal_client_secret
 }
 
-# PROD AKS
+# 🔴 PROD AKS
 module "aks_prod" {
   source = "./modules/aks"
 
@@ -76,129 +143,122 @@ module "aks_prod" {
 
 ---
 
-## 🧮 variables.tf
+## 📤 outputs.tf (ROOT)
 
 ```hcl
-variable "location" { default = "West Europe" }
-variable "kubernetes_version" { default = "1.32.9" }
+output "dev_aks_name" {
+  value = module.aks_dev.aks_name
+}
 
-variable "dev_node_vm_size"  { default = "Standard_D2s_v6" }
-variable "dev_node_count"   { default = 2 }
+output "prod_aks_name" {
+  value = module.aks_prod.aks_name
+}
 
-variable "prod_node_vm_size" { default = "Standard_D4s_v6" }
-variable "prod_node_count"  { default = 3 }
+output "dev_kubeconfig" {
+  value     = module.aks_dev.kube_config
+  sensitive = true
+}
 
-variable "service_principal_app_id" {}
-variable "service_principal_client_secret" { sensitive = true }
+output "prod_kubeconfig" {
+  value     = module.aks_prod.kube_config
+  sensitive = true
+}
 ```
 
 ---
 
-## ▶️ One Command Deployment
+## 🧩 modules/aks/variables.tf
+
+```hcl
+variable "cluster_name" { type = string }
+variable "resource_group_name" { type = string }
+variable "location" { type = string }
+variable "dns_prefix" { type = string }
+variable "kubernetes_version" { type = string }
+variable "node_vm_size" { type = string }
+variable "node_count" { type = number }
+variable "service_principal_app_id" { type = string }
+variable "service_principal_client_secret" {
+  type      = string
+  sensitive = true
+}
+```
+
+---
+
+## 🧩 modules/aks/main.tf (AKS Blueprint)
+
+```hcl
+resource "azurerm_resource_group" "rg" {
+  name     = var.resource_group_name
+  location = var.location
+}
+
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = var.cluster_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  dns_prefix          = var.dns_prefix
+
+  kubernetes_version = var.kubernetes_version
+  sku_tier           = "Standard"
+
+  service_principal {
+    client_id     = var.service_principal_app_id
+    client_secret = var.service_principal_client_secret
+  }
+
+  default_node_pool {
+    name       = "system"
+    vm_size    = var.node_vm_size
+    node_count = var.node_count
+    zones      = [1, 2, 3]
+  }
+
+  role_based_access_control_enabled = true
+}
+```
+
+---
+
+## 📤 modules/aks/outputs.tf
+
+```hcl
+output "aks_name" {
+  value = azurerm_kubernetes_cluster.aks.name
+}
+
+output "kube_config" {
+  value     = azurerm_kubernetes_cluster.aks.kube_config_raw
+  sensitive = true
+}
+```
+
+---
+
+## ▶️ How to Run
 
 ```bash
 terraform init
 terraform apply
 ```
 
-✅ DEV AKS created
-✅ PROD AKS created
-✅ One execution
+---
+
+## ⚠️ Downsides (DO NOT IGNORE)
+
+❌ One Terraform state file
+❌ `terraform destroy` deletes DEV + PROD
+❌ No approval or access separation
+❌ Not CI/CD safe
 
 ---
 
-## 👍 Why This Is GOOD for Learning
+## 🧠 Golden Rule
 
-✅ Easy to understand
-✅ See DEV vs PROD differences clearly
-✅ Learn modules quickly
-✅ Fast feedback
+> 🧩 **Module = Blueprint**
+> 🚧 **Environment = State Boundary**
 
 ---
 
-## ❌ Downsides (VERY IMPORTANT)
-
-### 🚨 1. Single State File (BIGGEST PROBLEM)
-
-```
-terraform.tfstate
-```
-
-Contains:
-
-- DEV resources
-- PROD resources
-
-👉 One mistake affects **both**
-
----
-
-### 💥 2. Dangerous Destroy
-
-```bash
-terraform destroy
-```
-
-❌ Deletes DEV **and** PROD together
-
----
-
-### 🔐 3. No Access Control
-
-- Cannot restrict who touches PROD
-- Junior engineer can break PROD
-
----
-
-### 🔄 4. No Promotion Flow
-
-❌ No DEV → PROD approval
-❌ No testing gate
-❌ No CI/CD stages
-
----
-
-### 🧯 5. Large Blast Radius
-
-Any change:
-
-- affects whole infrastructure
-- harder to rollback
-
----
-
-## 🏁 Verdict (Very Honest)
-
-| Use Case           | Verdict  |
-| ------------------ | -------- |
-| Learning Terraform | ✅ OK    |
-| Demos / Labs       | ✅ OK    |
-| CI/CD pipelines    | ❌ BAD   |
-| Real Production    | ❌ NEVER |
-
----
-
-## 🧠 Golden Rule to Remember
-
-> **One Terraform state = one environment**
-
-Break this rule → problems later.
-
----
-
-## 🚀 Next Step (When You’re Ready)
-
-👉 Split into:
-
-```
-environments/dev
-environments/prod
-```
-
-👉 Same module
-👉 Separate state
-👉 Real DevOps practice
-
----
-
-🎓 Learn it this way first — then move to best practice.
+🎓 Perfect for **learning Terraform** before moving to real-world DevOps structure.
