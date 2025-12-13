@@ -1,0 +1,171 @@
+trigger:
+  - none
+
+pool:
+  name: nakodtech
+
+variables:
+  dockerRegistryServiceConnection: docker-conn
+  imageTag: latest
+
+stages:
+  - stage: BuildAndPush
+    displayName: Build & Push Microservices
+    jobs:
+      - job: DockerBuild
+        displayName: Build Docker Images
+        steps:
+          # -------------------
+          # adservice (Java / Gradle)
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push adservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/adservice
+              dockerfile: src/adservice/Dockerfile
+              buildContext: src/adservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # cartservice (.NET) ⚠ SPECIAL STRUCTURE
+          # Dockerfile is inside src/cartservice/src
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push cartservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/cartservice
+              dockerfile: src/cartservice/src/Dockerfile # ✅ exact location
+              buildContext: src/cartservice/src # ✅ must match
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # checkoutservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push checkoutservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/checkoutservice
+              dockerfile: src/checkoutservice/Dockerfile
+              buildContext: src/checkoutservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # currencyservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push currencyservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/currencyservice
+              dockerfile: src/currencyservice/Dockerfile
+              buildContext: src/currencyservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # emailservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push emailservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/emailservice
+              dockerfile: src/emailservice/Dockerfile
+              buildContext: src/emailservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # frontend (Go)
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push frontend
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/frontend
+              dockerfile: src/frontend/Dockerfile
+              buildContext: src/frontend
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # loadgenerator
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push loadgenerator
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/loadgenerator
+              dockerfile: src/loadgenerator/Dockerfile
+              buildContext: src/loadgenerator
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # paymentservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push paymentservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/paymentservice
+              dockerfile: src/paymentservice/Dockerfile
+              buildContext: src/paymentservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # productcatalogservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push productcatalogservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/productcatalogservice
+              dockerfile: src/productcatalogservice/Dockerfile
+              buildContext: src/productcatalogservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # recommendationservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push recommendationservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/recommendationservice
+              dockerfile: src/recommendationservice/Dockerfile
+              buildContext: src/recommendationservice
+              tags: |
+                $(imageTag)
+
+          # -------------------
+          # shippingservice
+          # -------------------
+          - task: Docker@2
+            displayName: Build & Push shippingservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/shippingservice
+              dockerfile: src/shippingservice/Dockerfile
+              buildContext: src/shippingservice
+              tags: |
+                $(imageTag)

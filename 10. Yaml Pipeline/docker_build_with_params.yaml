@@ -1,0 +1,64 @@
+trigger:
+  - none
+
+pool:
+  name: nakodtech
+
+variables:
+  dockerRegistryServiceConnection: docker-conn
+  imageTag: latest
+
+# ===============================
+# Parameters for STANDARD services
+# ===============================
+parameters:
+  - name: standardServices
+    type: object
+    default:
+      - adservice
+      - checkoutservice
+      - currencyservice
+      - emailservice
+      - frontend
+      - loadgenerator
+      - paymentservice
+      - productcatalogservice
+      - recommendationservice
+      - shippingservice
+
+stages:
+  - stage: BuildAndPush
+    displayName: Build & Push Microservices
+    jobs:
+      - job: DockerBuild
+        displayName: Build Docker Images
+        steps:
+          # ===============================
+          # STANDARD SERVICES (same structure)
+          # ===============================
+          - ${{ each service in parameters.standardServices }}:
+              - task: Docker@2
+                displayName: Build & Push ${{ service }}
+                inputs:
+                  command: buildAndPush
+                  containerRegistry: $(dockerRegistryServiceConnection)
+                  repository: bofosu1/${{ service }}
+                  dockerfile: src/${{ service }}/Dockerfile
+                  buildContext: src/${{ service }}
+                  tags: |
+                    $(imageTag)
+
+          # ===============================
+          # cartservice (.NET) – special case
+          # Dockerfile inside src/cartservice/src
+          # ===============================
+          - task: Docker@2
+            displayName: Build & Push cartservice
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(dockerRegistryServiceConnection)
+              repository: bofosu1/cartservice
+              dockerfile: src/cartservice/src/Dockerfile
+              buildContext: src/cartservice/src
+              tags: |
+                $(imageTag)
